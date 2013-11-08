@@ -2,11 +2,20 @@
 
 unite-pull-request is a [unite.vim](https://github.com/Shougo/unite.vim "unite.vim") plugin for Viewing GitHub pull request.
 
-Requirement:
+## Requirement
 - curl
 - webapi-vim (https://github.com/mattn/webapi-vim)
 - vim-fugitive (https://github.com/tpope/vim-fugitive)
 
+## Install
+
+Bundle it!
+
+```vim
+NeoBundle 'joker1007/unite-pull-request', {'depends' : 'tpope/vim-fugitive'}
+```
+
+## Usage
 
 Add `g:github_token` to your vimrc
 

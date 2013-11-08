@@ -1,4 +1,4 @@
-*unite.txt*	Pull Request source for unite.vim
+*unite-pull-request*	Pull Request source for unite.vim
 
 Version: 0.1.0
 Author: Tomohiro Hashidate (joker1007) <kakyoin.hierophant@gmail.com>
@@ -44,12 +44,12 @@ Change current directory to Git project, before use it.
 Because this plugin uses vim-fugitive to open Git blob file
 
 To fetch pull request list of a repository,
-execute |:Unite| with |pull_request| source and argument.
+execute |:Unite| with pull_request source and argument.
 >
 	:Unite pull_request:owner/repository_name
 <
 To fetch pull request changed file list,
-execute |:Unite| with |pull_request_file| source and argument.
+execute |:Unite| with pull_request_file source and argument.
 >
 	:Unite pull_request:owner/repository_name:1
 <
