@@ -32,11 +32,6 @@ if !exists('g:github_token')
   finish
 endif
 
-if !exists('g:github_user')
-  echohl ErrorMsg | echomsg "require 'g:github_user' variables" | echohl None
-  finish
-endif
-
 if !executable('curl')
   echohl ErrorMsg | echomsg "require 'curl' command" | echohl None
   finish
