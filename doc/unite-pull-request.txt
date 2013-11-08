@@ -1,0 +1,84 @@
+*unite.txt*	Pull Request source for unite.vim
+
+Version: 0.1.0
+Author: Tomohiro Hashidate (joker1007) <kakyoin.hierophant@gmail.com>
+" License: MIT license  {{{
+"     Permission is hereby granted, free of charge, to any person obtaining
+"     a copy of this software and associated documentation files (the
+"     "Software"), to deal in the Software without restriction, including
+"     without limitation the rights to use, copy, modify, merge, publish,
+"     distribute, sublicense, and/or sell copies of the Software, and to
+"     permit persons to whom the Software is furnished to do so, subject to
+"     the following conditions:
+"
+"     The above copyright notice and this permission notice shall be included
+"     in all copies or substantial portions of the Software.
+"
+"     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+"     OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+"     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+"     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+"     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+"     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+"     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+" }}}
+
+==============================================================================
+INTRODUCTION						*unite-pull-request-introduction*
+
+*unite-pull-request* is a |unite.vim| plugin for Viewing GitHub pull request.
+
+Requirement:
+- |curl|
+- |webapi-vim| (https://github.com/mattn/webapi-vim)
+- |vim-fugitive| (https://github.com/tpope/vim-fugitive)
+
+==============================================================================
+USAGE							*unite-pull-request-usage*
+
+Add |g:github_token| to your vimrc
+>
+	let g:github_token="xxxxxxxxxxxxx"
+<
+Change current directory to Git project, before use it.
+Because this plugin uses vim-fugitive to open Git blob file
+
+To fetch pull request list of a repository,
+execute |:Unite| with |pull_request| source and argument.
+>
+	:Unite pull_request:owner/repository_name
+<
+To fetch pull request changed file list,
+execute |:Unite| with |pull_request_file| source and argument.
+>
+	:Unite pull_request:owner/repository_name:1
+<
+==============================================================================
+VARIABLES							*unite-pull-request-variables*
+
+					*g:unite_pull_request_exclude_extensions*
+g:unite_pull_request_exclude_extensions
+		Specify filtered file extension names.
+		Default value is following.
+>
+	let g:unite_pull_request_exclude_extensions = [
+	        \ "png", "jpg", "jpeg", "gif", "pdf", "bmp",
+	        \ "exe", "jar", "zip", "war",
+	        \ "doc", "docx", "xls", "xlsx",
+	        \]
+<
+					*g:unite_pull_request_status_mark_table*
+g:unite_pull_request_status_mark_table
+		Specify marks that is indicates file status (added or removed
+                or modified).
+		Default value is following.
+>
+	let g:unite_pull_request_status_mark_table = {
+	      \ "added" : "+",
+	      \ "modified" : "*",
+	      \ "removed" : "-",
+	      \ }
+<
+==============================================================================
+
+vim:tw=78:fo=tcq2mM:ts=8:ft=help:norl
