@@ -31,6 +31,8 @@ let s:unite_source.name = 'pull_request_file'
 let s:unite_source.description = 'candidates from changed files of a pull request'
 let s:unite_source.default_action = { 'common' : 'diffopen' }
 let s:unite_source.action_table = {}
+let s:unite_source.syntax = 'uniteSource__PullRequest'
+let s:unite_source.hooks = {}
 
 function! s:unite_source.gather_candidates(args, context)
   if len(a:args) != 2
@@ -45,6 +47,16 @@ endfunction
 
 function! unite#sources#pull_request_file#define()
   return s:unite_source
+endfunction
+
+function! s:unite_source.hooks.on_syntax(args, context)
+  execute "syntax match uniteSource_PullRequest_Added /".g:unite_pull_request_status_mark_table.added." .*/ contained containedin=uniteSource__PullRequest"
+  execute "syntax match uniteSource_PullRequest_Removed /".g:unite_pull_request_status_mark_table.removed." .*/ contained containedin=uniteSource__PullRequest"
+  execute "syntax match uniteSource_PullRequest_Modified /".g:unite_pull_request_status_mark_table.modified." .*/ contained containedin=uniteSource__PullRequest"
+
+  highlight link uniteSource_PullRequest_Added DiffAdd
+  highlight link uniteSource_PullRequest_Removed DiffDelete
+  highlight link uniteSource_PullRequest_Modified DiffChange
 endfunction
 
 let s:action_table = {}

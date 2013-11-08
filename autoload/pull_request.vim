@@ -42,6 +42,22 @@ if !executable('curl')
   finish
 endif
 
+if !exists('g:unite_pull_request_exclude_extensions')
+  let g:unite_pull_request_exclude_extensions = [
+        \ "png", "jpg", "jpeg", "gif", "pdf", "bmp",
+        \ "exe", "jar", "zip", "war",
+        \ "doc", "docx", "xls", "xlsx",
+        \]
+endif
+
+if !exists('g:unite_pull_request_status_mark_table')
+  let g:unite_pull_request_status_mark_table = {
+        \ "added" : "+",
+        \ "modified" : "*",
+        \ "removed" : "-",
+        \ }
+endif
+
 let s:endpoint_url = "https://api.github.com/"
 
 let s:github_request_header = {
@@ -49,12 +65,6 @@ let s:github_request_header = {
         \ "Content-type" : "application/json",
         \ "Authorization" : "token " . g:github_token,
         \ }
-
-let s:status_mark_table = {
-      \ "added" : "+",
-      \ "modified" : "*",
-      \ "removed" : "-",
-      \ }
 
 function! s:pull_request_list_url(path)
   return s:endpoint_url . "repos/" . a:path . "/pulls"
@@ -124,8 +134,16 @@ function! pull_request#fetch_files(repo, number)
   let candidates = []
 
   for f in files
+    let matches = matchlist(f.filename, '\.\(\w*\)$')
+    if len(matches) > 1
+      let extname = matches[1]
+      if index(g:unite_pull_request_exclude_extensions, extname) != -1
+        continue
+      endif
+    endif
+
     let item = {
-          \ "word" : s:status_mark_table[f.status] . " " . f.filename,
+          \ "word" : g:unite_pull_request_status_mark_table[f.status] . " " . f.filename,
           \ "source" : "pull_request_file",
           \ "source__file_info" : {
           \   "filename" : f.filename,
