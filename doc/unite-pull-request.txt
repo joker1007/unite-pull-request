@@ -26,7 +26,7 @@ Author: Tomohiro Hashidate (joker1007) <kakyoin.hierophant@gmail.com>
 ==============================================================================
 INTRODUCTION						*unite-pull-request-introduction*
 
-*unite-pull-request* is a |unite.vim| plugin for Viewing GitHub pull request.
+|unite-pull-request| is a |unite.vim| plugin for Viewing GitHub pull request.
 
 Requirement:
 - |curl|
