@@ -11,7 +11,7 @@ unite-pull-request is a [unite.vim](https://github.com/Shougo/unite.vim "unite.v
 Bundle it!
 
 ```vim
-NeoBundle 'joker1007/unite-pull-request', {'depends' : 'tpope/vim-fugitive'}
+NeoBundle 'joker1007/unite-pull-request'
 ```
 
 ## Usage
