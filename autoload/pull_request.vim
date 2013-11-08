@@ -58,7 +58,8 @@ let s:endpoint_url = "https://api.github.com/"
 let s:github_request_header = {
         \ "User-Agent" : "unite-pull-request",
         \ "Content-type" : "application/json",
-        \ "Authorization" : "token " . g:github_token,
+        \ "Authorization" : "Basic " .
+        \   webapi#base64#b64encode(g:github_token . ":x-oauth-basic")
         \ }
 
 function! s:pull_request_list_url(path)
@@ -73,8 +74,8 @@ function! s:pull_request_files_url(path, number)
   return s:endpoint_url . "repos/" . a:path . "/pulls/" . a:number . "/files"
 endfunction
 
-function! s:fugitive_path(git_dir, tree_sha, filepath)
-  return "fugitive://" . a:git_dir . "//" . a:tree_sha . "/" . a:filepath
+function! s:raw_file_url(repo, sha, path)
+  return "https://raw.github.com/" . a:repo . "/" . a:sha . "/" . a:path
 endfunction
 
 function! pull_request#fetch_list(repo)
@@ -106,26 +107,35 @@ function! pull_request#fetch_list(repo)
   return candidates
 endfunction
 
-function! pull_request#fetch_files(repo, number)
+function! pull_request#fetch_request(repo, number)
   let res = webapi#http#get(s:pull_request_url(a:repo, a:number), {}, s:github_request_header)
 
   if res.status !~ "^2.*"
-    return ['error', 'Failed to fetch pull request']
+    echo 'Failed to fetch pull request'
+    return {}
   endif
 
   let content = webapi#json#decode(res.content)
-  let base_sha = content.base.sha
-  let head_sha = content.head.sha
+  return {
+        \ "base_sha" : content.base.sha,
+        \ "base_ref" : content.base.ref,
+        \ "head_sha" : content.head.sha,
+        \ "head_ref" : content.head.ref,
+        \}
+endfunction
+
+function! pull_request#fetch_files(repo, number)
+  let pr_info = pull_request#fetch_request(a:repo, a:number)
 
   let files_res = webapi#http#get(s:pull_request_files_url(a:repo, a:number), {}, s:github_request_header)
 
   if files_res.status !~ "^2.*"
-    return ['error', 'Failed to fetch pull request files']
+    echo 'Failed to fetch pull request files'
+    return []
   endif
 
   let files = webapi#json#decode(files_res.content)
 
-  let git_dir = fugitive#extract_git_dir(".")
   let candidates = []
 
   for f in files
@@ -143,16 +153,48 @@ function! pull_request#fetch_files(repo, number)
           \ "source__file_info" : {
           \   "filename" : f.filename,
           \   "status" : f.status,
-          \   "base_file" : s:fugitive_path(git_dir, base_sha, f.filename),
-          \   "head_file" : s:fugitive_path(git_dir, head_sha, f.filename),
+          \   "repo"   : a:repo,
+          \   "base_sha" : pr_info.base_sha,
+          \   "base_ref" : pr_info.base_ref,
+          \   "head_sha" : pr_info.head_sha,
+          \   "head_ref" : pr_info.head_ref,
           \   "sha" : f.sha,
           \   "blob_url" : f.blob_url,
           \   "raw_url" : f.raw_url,
           \   }
           \ }
+
     if has_key(f, 'patch')
-      let item["patch"] = f.patch
+      let item.source__file_info.patch = f.patch
     endif
+
+    function! item.source__file_info.fetch_base_file()
+      let raw_file_url = s:raw_file_url(self.repo, self.base_sha, self.filename)
+      let header = deepcopy(s:github_request_header)
+      let header["Content-type"] = "application/vnd.github.v3.raw"
+      let header["Accept"] = "application/vnd.github.v3.raw"
+      let raw_res = webapi#http#get(raw_file_url, {}, header)
+      if raw_res.status !~ "^2.*"
+        echo 'Failed to fetch pull request files'
+        return "error"
+      endif
+
+      return raw_res.content
+    endfunction
+
+    function! item.source__file_info.fetch_head_file()
+      let raw_file_url = s:raw_file_url(self.repo, self.head_sha, self.filename)
+      let header = deepcopy(s:github_request_header)
+      let header["Content-type"] = "application/vnd.github.v3.raw"
+      let header["Accept"] = "application/vnd.github.v3.raw"
+      let raw_res = webapi#http#get(raw_file_url, {}, header)
+      if raw_res.status !~ "^2.*"
+        echo 'Failed to fetch pull request files'
+        return "error"
+      endif
+
+      return raw_res.content
+    endfunction
 
     call add(candidates, item)
   endfor

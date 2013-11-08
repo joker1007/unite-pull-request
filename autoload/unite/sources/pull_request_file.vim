@@ -34,6 +34,16 @@ let s:unite_source.action_table = {}
 let s:unite_source.syntax = 'uniteSource__PullRequest'
 let s:unite_source.hooks = {}
 
+function! s:init_file_setting()
+  setlocal buftype=nofile
+  setlocal bufhidden=wipe
+  setlocal nobuflisted
+  setlocal noswapfile
+  setlocal nomodified
+  setlocal nomodifiable
+  setlocal readonly
+endfunction
+
 function! s:unite_source.gather_candidates(args, context)
   if len(a:args) != 2
     echoerr "this source requires two args (repository name, pull request number)"
@@ -71,41 +81,61 @@ function! s:action_table.diffopen.func(candidate)
 
   if status == "added"
     tabnew [nofile]
-    let t:title = 'vimdiff'
     if &modifiable
       call setline(1, "[no file]")
     endif
-    setlocal buftype=nofile
-    setlocal bufhidden=wipe
-    setlocal nobuflisted
-    setlocal noswapfile
-    setlocal nomodified
-    setlocal nomodifiable
-    setlocal readonly
+    call s:init_file_setting()
     setlocal splitright
 
-    execute "vsplit " . a:candidate.source__file_info.head_file
+    execute "vsplit " .
+          \ a:candidate.source__file_info.head_ref . "/" .
+          \ a:candidate.source__file_info.filename
+    if &modifiable
+      let head_file = a:candidate.source__file_info.fetch_head_file()
+      silent put =head_file
+      execute "1delete"
+      call s:init_file_setting()
+    endif
   elseif status == "removed"
-    execute "tabnew " . a:candidate.source__file_info.base_file
-    let t:title = 'vimdiff'
+    silent execute "tabnew " .
+          \ a:candidate.source__file_info.base_ref . "/" .
+          \ a:candidate.source__file_info.filename
+    if &modifiable
+      let base_file = a:candidate.source__file_info.fetch_base_file()
+      silent put =base_file
+      execute "1delete"
+      call s:init_file_setting()
+    endif
     setlocal splitright
 
     vsplit [deleted]
     if &modifiable
       call setline(1, "[deleted]")
     endif
-    setlocal buftype=nofile
-    setlocal bufhidden=wipe
-    setlocal nobuflisted
-    setlocal noswapfile
-    setlocal nomodified
-    setlocal nomodifiable
-    setlocal readonly
+    call s:init_file_setting()
   else
-    execute "tabnew " . a:candidate.source__file_info.base_file
-    let t:title = 'vimdiff'
+    silent execute "tabnew " .
+          \ a:candidate.source__file_info.base_ref . "/" .
+          \ a:candidate.source__file_info.filename
+    if &modifiable
+      let base_file = a:candidate.source__file_info.fetch_base_file()
+      silent put =base_file
+      execute "1delete"
+      call s:init_file_setting()
+    endif
     setlocal splitright
-    execute "vertical diffsplit " . a:candidate.source__file_info.head_file
+    diffthis
+
+    silent execute "vsplit " .
+          \ a:candidate.source__file_info.head_ref . "/" .
+          \ a:candidate.source__file_info.filename
+    if &modifiable
+      let head_file = a:candidate.source__file_info.fetch_head_file()
+      silent put =head_file
+      execute "1delete"
+      call s:init_file_setting()
+    endif
+    diffthis
   endif
 
 endfunction
