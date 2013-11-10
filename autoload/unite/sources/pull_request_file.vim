@@ -95,6 +95,7 @@ function! s:action_table.diffopen.func(candidate)
       silent put =head_file
       execute "1delete"
       call s:init_file_setting()
+      call s:define_buffer_cmd(a:candidate.source__file_info)
     endif
   elseif status == "removed"
     silent execute "tabnew " .
@@ -105,6 +106,7 @@ function! s:action_table.diffopen.func(candidate)
       silent put =base_file
       execute "1delete"
       call s:init_file_setting()
+      call s:define_buffer_cmd(a:candidate.source__file_info)
     endif
     setlocal splitright
 
@@ -136,8 +138,44 @@ function! s:action_table.diffopen.func(candidate)
       call s:init_file_setting()
     endif
     diffthis
+
+    silent execute "botright split " .
+          \ a:candidate.source__file_info.head_ref . "/" .
+          \ a:candidate.source__file_info.filename . ".patch"
+    if &modifiable
+      let patch = a:candidate.source__file_info.patch
+      silent put =patch
+      execute "1delete"
+      call s:init_file_setting()
+      call s:define_buffer_cmd(a:candidate.source__file_info)
+    endif
   endif
 
+endfunction
+
+function! s:define_buffer_cmd(source__file_info)
+  let b:source__file_info = a:source__file_info
+  command! -buffer PrCommentPost
+        \ call s:open_comment_buffer()
+  nnoremap <silent><buffer> <Enter> :<C-U>PrCommentPost<CR>
+endfunction
+
+function! s:open_comment_buffer()
+  let repo = b:source__file_info.repo
+  let number = b:source__file_info.number
+
+  let position = line(".")
+  if b:source__file_info.status == "modified"
+    let position = position - 1
+  endif
+
+  let comment_info = {
+        \ "commit_id" : b:source__file_info.head_sha,
+        \ "path"      : b:source__file_info.filename,
+        \ "position"  : position,
+        \ }
+
+  call pull_request#open_comment_buffer(repo, number, comment_info)
 endfunction
 
 let &cpo = s:save_cpo
