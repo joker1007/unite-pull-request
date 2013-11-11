@@ -181,32 +181,35 @@ function! pull_request#fetch_files(repo, number)
       let item.source__file_info.patch = f.patch
     endif
 
-    function! item.source__file_info.fetch_base_file()
-      let raw_file_url = s:raw_file_url(self.repo, self.base_sha, self.filename)
-      let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header)
-      if raw_res.status !~ "^2.*"
-        echo 'Failed to fetch pull request files'
-        return "error"
-      endif
-
-      return raw_res.content
-    endfunction
-
-    function! item.source__file_info.fetch_head_file()
-      let raw_file_url = s:raw_file_url(self.repo, self.head_sha, self.filename)
-      let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header)
-      if raw_res.status !~ "^2.*"
-        echo 'Failed to fetch pull request files'
-        return "error"
-      endif
-
-      return raw_res.content
-    endfunction
+    let item.source__file_info["fetch_base_file"] = function("s:fetch_base_file")
+    let item.source__file_info["fetch_head_file"] = function("s:fetch_head_file")
 
     call add(candidates, item)
   endfor
 
   return candidates
+endfunction
+
+function! s:fetch_base_file() dict
+  let raw_file_url = s:raw_file_url(self.repo, self.base_sha, self.filename)
+  let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header)
+  if raw_res.status !~ "^2.*"
+    echo 'Failed to fetch pull request files'
+    return "error"
+  endif
+
+  return raw_res.content
+endfunction
+
+function! s:fetch_head_file() dict
+  let raw_file_url = s:raw_file_url(self.repo, self.head_sha, self.filename)
+  let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header)
+  if raw_res.status !~ "^2.*"
+    echo 'Failed to fetch pull request files'
+    return "error"
+  endif
+
+  return raw_res.content
 endfunction
 
 function! pull_request#post_review_comment(repo, number, comment_info)
