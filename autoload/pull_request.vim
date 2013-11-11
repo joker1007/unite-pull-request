@@ -101,11 +101,17 @@ function! pull_request#fetch_list(repo)
   let candidates = []
 
   for pr in content
+    let pr_info = {
+          \ "base_sha" : pr.base.sha,
+          \ "base_ref" : pr.base.ref,
+          \ "head_sha" : pr.head.sha,
+          \ "head_ref" : pr.head.ref,
+          \ }
     let item = {
           \ "word" : "#" . pr.number . " " . pr.title,
           \ "source" : "pull_request",
           \ "action__source_name" : "pull_request_file",
-          \ "action__source_args" : [a:repo, pr.number],
+          \ "action__source_args" : [a:repo, pr.number, pr_info],
           \ "source__pull_request_info" : {
           \   "html_url" : pr.html_url,
           \   "state" : pr.state,
@@ -136,8 +142,12 @@ function! pull_request#fetch_request(repo, number)
         \}
 endfunction
 
-function! pull_request#fetch_files(repo, number)
-  let pr_info = pull_request#fetch_request(a:repo, a:number)
+function! pull_request#fetch_files(repo, number, ...)
+  if a:0 > 0
+    let pr_info = a:000[0]
+  else
+    let pr_info = pull_request#fetch_request(a:repo, a:number)
+  endif
 
   let files_res = webapi#http#get(s:pull_request_files_url(a:repo, a:number), {}, s:github_request_header)
 

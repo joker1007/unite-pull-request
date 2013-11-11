@@ -45,14 +45,20 @@ function! s:init_file_setting()
 endfunction
 
 function! s:unite_source.gather_candidates(args, context)
-  if len(a:args) != 2
+  if len(a:args) < 2
     echoerr "this source requires two args (repository name, pull request number)"
     return []
   endif
 
   let repo = a:args[0]
   let number = a:args[1]
-  return pull_request#fetch_files(repo, number)
+
+  if len(a:args) > 2
+    let pr_info = a:args[2]
+    return pull_request#fetch_files(repo, number, pr_info)
+  else
+    return pull_request#fetch_files(repo, number)
+  endif
 endfunction
 
 function! unite#sources#pull_request_file#define()
