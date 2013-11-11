@@ -80,83 +80,84 @@ let s:unite_source.action_table.common = s:action_table
 
 let s:action_table.diffopen = {
       \ 'description' : 'diff open base file and head file',
+      \ 'is_selectable' : 1,
       \ 'is_quit' : 0,
       \ }
 function! s:action_table.diffopen.func(candidate)
-  let status = a:candidate.source__file_info.status
-
-  if status == "added"
-    tabnew [nofile]
-    if &modifiable
-      call setline(1, "[no file]")
-    endif
-    call s:init_file_setting()
-    setlocal splitright
-
-    execute "vsplit " .
-          \ a:candidate.source__file_info.head_ref . "/" .
-          \ a:candidate.source__file_info.filename
-    if &modifiable
-      let head_file = a:candidate.source__file_info.fetch_head_file()
-      silent put =head_file
-      execute "1delete"
+  for item in a:candidate
+    let status = item.source__file_info.status
+    if status == "added"
+      tabnew [nofile]
+      if &modifiable
+        call setline(1, "[no file]")
+      endif
       call s:init_file_setting()
-      call s:define_buffer_cmd(a:candidate.source__file_info)
-    endif
-  elseif status == "removed"
-    silent execute "tabnew " .
-          \ a:candidate.source__file_info.base_ref . "/" .
-          \ a:candidate.source__file_info.filename
-    if &modifiable
-      let base_file = a:candidate.source__file_info.fetch_base_file()
-      silent put =base_file
-      execute "1delete"
-      call s:init_file_setting()
-      call s:define_buffer_cmd(a:candidate.source__file_info)
-    endif
-    setlocal splitright
+      setlocal splitright
 
-    vsplit [deleted]
-    if &modifiable
-      call setline(1, "[deleted]")
-    endif
-    call s:init_file_setting()
-  else
-    silent execute "tabnew " .
-          \ a:candidate.source__file_info.base_ref . "/" .
-          \ a:candidate.source__file_info.filename
-    if &modifiable
-      let base_file = a:candidate.source__file_info.fetch_base_file()
-      silent put =base_file
-      execute "1delete"
-      call s:init_file_setting()
-    endif
-    setlocal splitright
-    diffthis
+      execute "vsplit " .
+            \ item.source__file_info.head_ref . "/" .
+            \ item.source__file_info.filename
+      if &modifiable
+        let head_file = item.source__file_info.fetch_head_file()
+        silent put =head_file
+        execute "1delete"
+        call s:init_file_setting()
+        call s:define_buffer_cmd(item.source__file_info)
+      endif
+    elseif status == "removed"
+      silent execute "tabnew " .
+            \ item.source__file_info.base_ref . "/" .
+            \ item.source__file_info.filename
+      if &modifiable
+        let base_file = item.source__file_info.fetch_base_file()
+        silent put =base_file
+        execute "1delete"
+        call s:init_file_setting()
+        call s:define_buffer_cmd(item.source__file_info)
+      endif
+      setlocal splitright
 
-    silent execute "vsplit " .
-          \ a:candidate.source__file_info.head_ref . "/" .
-          \ a:candidate.source__file_info.filename
-    if &modifiable
-      let head_file = a:candidate.source__file_info.fetch_head_file()
-      silent put =head_file
-      execute "1delete"
+      vsplit [deleted]
+      if &modifiable
+        call setline(1, "[deleted]")
+      endif
       call s:init_file_setting()
-    endif
-    diffthis
+    else
+      silent execute "tabnew " .
+            \ item.source__file_info.base_ref . "/" .
+            \ item.source__file_info.filename
+      if &modifiable
+        let base_file = item.source__file_info.fetch_base_file()
+        silent put =base_file
+        execute "1delete"
+        call s:init_file_setting()
+      endif
+      setlocal splitright
+      diffthis
 
-    silent execute "botright split " .
-          \ a:candidate.source__file_info.head_ref . "/" .
-          \ a:candidate.source__file_info.filename . ".patch"
-    if &modifiable
-      let patch = a:candidate.source__file_info.patch
-      silent put =patch
-      execute "1delete"
-      call s:init_file_setting()
-      call s:define_buffer_cmd(a:candidate.source__file_info)
-    endif
-  endif
+      silent execute "vsplit " .
+            \ item.source__file_info.head_ref . "/" .
+            \ item.source__file_info.filename
+      if &modifiable
+        let head_file = item.source__file_info.fetch_head_file()
+        silent put =head_file
+        execute "1delete"
+        call s:init_file_setting()
+      endif
+      diffthis
 
+      silent execute "botright split " .
+            \ item.source__file_info.head_ref . "/" .
+            \ item.source__file_info.filename . ".patch"
+      if &modifiable
+        let patch = item.source__file_info.patch
+        silent put =patch
+        execute "1delete"
+        call s:init_file_setting()
+        call s:define_buffer_cmd(item.source__file_info)
+      endif
+    endif
+  endfor
 endfunction
 
 function! s:define_buffer_cmd(source__file_info)
