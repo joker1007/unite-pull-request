@@ -53,7 +53,7 @@ if !exists('g:unite_pull_request_status_mark_table')
         \ }
 endif
 
-let s:endpoint_url = "https://api.github.com/"
+let g:unite_pull_request_endpoint_url = "https://api.github.com/"
 
 let s:github_request_header = {
         \ "User-Agent" : "unite-pull-request",
@@ -71,7 +71,7 @@ let s:github_raw_access_header = {
         \ }
 
 function! s:pull_request_list_url(path)
-  return s:endpoint_url . "repos/" . a:path . "/pulls"
+  return g:unite_pull_request_endpoint_url . "repos/" . a:path . "/pulls"
 endfunction
 
 function! s:pull_request_url(path, number)

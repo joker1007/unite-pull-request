@@ -52,6 +52,13 @@ execute |:Unite| with pull_request_file source and argument.
 ==============================================================================
 VARIABLES							*unite-pull-request-variables*
 
+					*g:unite_pull_request_endpoint_url*
+g:unite_pull_request_endpoint_url
+		Specify API endpoint URL (for. Github Enterprise).
+		Default value is following.
+>
+	let g:unite_pull_request_endpoint_url = "https://api.github.com/"
+<
 					*g:unite_pull_request_exclude_extensions*
 g:unite_pull_request_exclude_extensions
 		Specify filtered file extension names.
