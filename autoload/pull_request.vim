@@ -55,9 +55,39 @@ endif
 
 let g:unite_pull_request_endpoint_url = "https://api.github.com/"
 
+lua << LUA
+local ltn12 = require("ltn12")
+local mime = require("mime")
+local base64 = ltn12.filter.chain(
+  mime.encode("base64"),
+  mime.wrap("base64")
+)
+
+upr_github = {}
+upr_github.token = vim.eval('g:github_token')
+upr_github.exclude_extensions = vim.eval('g:unite_pull_request_exclude_extensions')
+upr_github.encoded_token = base64(upr_github.token .. ":x-oauth-basic")
+
+upr_github.github_request_header = {}
+upr_github.github_request_header["User-Agent"] = "unite-pull-request"
+upr_github.github_request_header["Content-type"] = "application/json"
+upr_github.github_request_header["Authorization"] = "Basic " .. upr_github.encoded_token
+
+upr_github.github_raw_request_header = {}
+upr_github.github_raw_request_header["User-Agent"] = "unite-pull-request"
+upr_github.github_raw_request_header["Content-type"] = "application/vnd.github.v3.raw"
+upr_github.github_raw_request_header["Accept"] = "application/vnd.github.v3.raw"
+upr_github.github_raw_request_header["Authorization"] = "Basic " .. upr_github.encoded_token
+
+upr_github.pull_request_list_url = function(path)
+  return vim.eval("g:unite_pull_request_endpoint_url") .. "repos/" .. path .. "/pulls"
+end
+LUA
+
 let s:github_request_header = {
         \ "User-Agent" : "unite-pull-request",
         \ "Content-type" : "application/json",
+        \ "Accept" : "application/json",
         \ "Authorization" : "Basic " .
         \   webapi#base64#b64encode(g:github_token . ":x-oauth-basic")
         \ }
@@ -91,6 +121,24 @@ function! s:raw_file_url(repo, sha, path)
 endfunction
 
 function! pull_request#fetch_list(repo)
+  lua <<LUA
+  local ltn12 = require("ltn12")
+  local http = require("ssl.https")
+  local repo = vim.eval("a:repo")
+  local resp = {}
+
+  r, c, h, s = http.request{
+    url = upr_github.pull_request_list_url(repo),
+    method = "GET",
+    protocol = "tlsv1",
+    headers = upr_github.github_request_header,
+    sink = ltn12.sink.table(resp),
+    options = "all",
+    verify = "none"
+  }
+  print(table.concat(resp))
+LUA
+
   let res = webapi#http#get(s:pull_request_list_url(a:repo), {}, s:github_request_header)
 
   if res.status !~ "^2.*"
