@@ -82,6 +82,10 @@ upr_github.github_raw_request_header["Authorization"] = "Basic " .. upr_github.e
 upr_github.pull_request_list_url = function(path)
   return vim.eval("g:unite_pull_request_endpoint_url") .. "repos/" .. path .. "/pulls"
 end
+
+upr_github.pull_request_url = function(path, number)
+  return upr_github.pull_request_list_url(path) .. "/" .. tostring(number)
+end
 LUA
 
 let s:github_request_header = {
@@ -125,9 +129,11 @@ function! pull_request#fetch_list(repo)
   local ltn12 = require("ltn12")
   local http = require("ssl.https")
   local repo = vim.eval("a:repo")
+  local cjson = require("cjson")
+  local inspect = require("inspect")
   local resp = {}
 
-  r, c, h, s = http.request{
+  local r, c, h = http.request{
     url = upr_github.pull_request_list_url(repo),
     method = "GET",
     protocol = "tlsv1",
@@ -136,58 +142,82 @@ function! pull_request#fetch_list(repo)
     options = "all",
     verify = "none"
   }
-  print(table.concat(resp))
+
+  if string.find(c, "^2.*") then
+    local data = cjson.decode(table.concat(resp))
+
+    upr_pull_request_lists = vim.list()
+
+    for i, pr in ipairs(data) do
+      local pr_info = vim.dict()
+      pr_info.base_sha = pr.base.sha
+      pr_info.base_ref = pr.base.ref
+      pr_info.head_sha = pr.head.sha
+      pr_info.head_ref = pr.head.ref
+
+      local item = vim.dict()
+      action__source_args = vim.list()
+      action__source_args:add(repo)
+      action__source_args:add(tostring(pr.number))
+      action__source_args:add(pr_info)
+
+      item.word = "#" .. tostring(pr.number) .. " " .. pr.title
+      item.source = "pull_request"
+      item.action__source_name = "pull_request_file"
+      item.action__source_args = action__source_args
+
+      local source__pull_request_info = vim.dict()
+      source__pull_request_info.html_url = pr.html_url
+      source__pull_request_info.state = pr.state
+      source__pull_request_info.repo = repo
+      source__pull_request_info.number = tostring(pr.number)
+
+      item.source__pull_request_info = source__pull_request_info
+
+      upr_pull_request_lists:add(item)
+    end
+  else
+    vim.eval('return ["error", "Failed to fetch pull request list"]')
+  end
 LUA
 
-  let res = webapi#http#get(s:pull_request_list_url(a:repo), {}, s:github_request_header)
-
-  if res.status !~ "^2.*"
-    return ['error', 'Failed to fetch pull request list']
-  endif
-
-  let content = webapi#json#decode(res.content)
-  let candidates = []
-
-  for pr in content
-    let pr_info = {
-          \ "base_sha" : pr.base.sha,
-          \ "base_ref" : pr.base.ref,
-          \ "head_sha" : pr.head.sha,
-          \ "head_ref" : pr.head.ref,
-          \ }
-    let item = {
-          \ "word" : "#" . pr.number . " " . pr.title,
-          \ "source" : "pull_request",
-          \ "action__source_name" : "pull_request_file",
-          \ "action__source_args" : [a:repo, pr.number, pr_info],
-          \ "source__pull_request_info" : {
-          \   "html_url" : pr.html_url,
-          \   "state" : pr.state,
-          \   "repo" : a:repo,
-          \   "number" : pr.number,
-          \  }
-          \}
-    call add(candidates, item)
-  endfor
-
-  return candidates
+  return luaeval('upr_pull_request_lists')
 endfunction
 
 function! pull_request#fetch_request(repo, number)
-  let res = webapi#http#get(s:pull_request_url(a:repo, a:number), {}, s:github_request_header)
+  let content = {}
+  lua <<LUA
+  local ltn12 = require("ltn12")
+  local http = require("ssl.https")
+  local repo = vim.eval("a:repo")
+  local number = vim.eval("a:number")
+  local cjson = require("cjson")
+  local inspect = require("inspect")
+  local resp = {}
 
-  if res.status !~ "^2.*"
-    echo 'Failed to fetch pull request'
-    return {}
-  endif
+  local r, c, h = http.request{
+    url = upr_github.pull_request_url(repo, number),
+    method = "GET",
+    protocol = "tlsv1",
+    headers = upr_github.github_request_header,
+    sink = ltn12.sink.table(resp),
+    options = "all",
+    verify = "none"
+  }
+  if string.find(c, "^2.*") then
+    local data = cjson.decode(table.concat(resp))
 
-  let content = webapi#json#decode(res.content)
-  return {
-        \ "base_sha" : content.base.sha,
-        \ "base_ref" : content.base.ref,
-        \ "head_sha" : content.head.sha,
-        \ "head_ref" : content.head.ref,
-        \}
+    local content = vim.eval('content')
+    content.base_sha = data.base.sha
+    content.base_ref = data.base.ref
+    content.head_sha = data.head.sha
+    content.head_ref = data.head.ref
+  else
+    print('Failed to fetch pull request')
+  end
+LUA
+
+  return content
 endfunction
 
 function! pull_request#fetch_files(repo, number, ...)
