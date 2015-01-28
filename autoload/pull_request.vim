@@ -53,7 +53,13 @@ if !exists('g:unite_pull_request_status_mark_table')
         \ }
 endif
 
-let g:unite_pull_request_endpoint_url = "https://api.github.com/"
+if !exists('g:unite_pull_request_endpoint_url')
+  let g:unite_pull_request_endpoint_url = "https://api.github.com/"
+endif
+
+if !exists('g:unite_pull_request_fetch_per_page_size')
+  let g:unite_pull_request_fetch_per_page_size = 30
+endif
 
 let s:github_request_header = {
         \ "User-Agent" : "unite-pull-request",
@@ -70,16 +76,20 @@ let s:github_raw_access_header = {
         \   webapi#base64#b64encode(g:github_token . ":x-oauth-basic")
         \ }
 
-function! s:pull_request_list_url(path)
-  return g:unite_pull_request_endpoint_url . "repos/" . a:path . "/pulls"
+function! s:pull_request_list_url(path, page)
+  return g:unite_pull_request_endpoint_url . "repos/" . a:path .
+        \ "/pulls?page=" . a:page .
+        \ "&per_page=" . g:unite_pull_request_fetch_per_page_size
 endfunction
 
 function! s:pull_request_url(path, number)
-  return s:pull_request_list_url(a:path) . "/" . a:number
+  return g:unite_pull_request_endpoint_url . "repos/" . a:path .
+        \ "/pulls/" . a:number
 endfunction
 
-function! s:pull_request_files_url(path, number)
-  return s:pull_request_url(a:path, a:number) . "/files"
+function! s:pull_request_files_url(path, number, page)
+  return s:pull_request_url(a:path, a:number) . "/files?page=" . a:page .
+        \ "&per_page=" . g:unite_pull_request_fetch_per_page_size
 endfunction
 
 function! s:pull_request_comments_url(path, number)
@@ -90,8 +100,42 @@ function! s:raw_file_url(repo, sha, path)
   return "https://raw.github.com/" . a:repo . "/" . a:sha . "/" . a:path
 endfunction
 
-function! pull_request#fetch_list(repo)
-  let res = webapi#http#get(s:pull_request_list_url(a:repo), {}, s:github_request_header)
+function! s:is_exclude_file(filename)
+  let matches = matchlist(a:filename, '\.\(\w*\)$')
+  if len(matches) == 0
+    return 0
+  endif
+
+  let extname = matches[1]
+  return index(g:unite_pull_request_exclude_extensions, extname) + 1
+endfunction
+
+function! s:has_next_page(header)
+  let idx = match(a:header, '^Link:')
+  if idx == -1
+    return 0
+  endif
+
+  let link_header = a:header[idx]
+  if match(link_header, 'res="next"')
+    return 1
+  endif
+endfunction
+
+function! s:build_pr_info(data)
+  return {
+    \ "base_sha" : a:data.base.sha,
+    \ "base_ref" : a:data.base.ref,
+    \ "head_sha" : a:data.head.sha,
+    \ "head_ref" : a:data.head.ref,
+    \ "html_url" : a:data.html_url,
+    \ "state"    : a:data.state,
+    \ "number"   : a:data.number
+    \ }
+endfunction
+
+function! pull_request#fetch_list(repo, page)
+  let res = webapi#http#get(s:pull_request_list_url(a:repo, a:page), {}, s:github_request_header)
 
   if res.status !~ "^2.*"
     return ['error', 'Failed to fetch pull request list']
@@ -101,17 +145,12 @@ function! pull_request#fetch_list(repo)
   let candidates = []
 
   for pr in content
-    let pr_info = {
-          \ "base_sha" : pr.base.sha,
-          \ "base_ref" : pr.base.ref,
-          \ "head_sha" : pr.head.sha,
-          \ "head_ref" : pr.head.ref,
-          \ }
+    let pr_info = s:build_pr_info(pr)
     let item = {
           \ "word" : "#" . pr.number . " " . pr.title,
           \ "source" : "pull_request",
           \ "action__source_name" : "pull_request_file",
-          \ "action__source_args" : [a:repo, pr.number, pr_info],
+          \ "action__source_args" : [a:repo, pr.number, 1, pr_info],
           \ "source__pull_request_info" : {
           \   "html_url" : pr.html_url,
           \   "state" : pr.state,
@@ -121,6 +160,17 @@ function! pull_request#fetch_list(repo)
           \}
     call add(candidates, item)
   endfor
+
+  if s:has_next_page(res.header)
+    let next_page = {
+      \ "word" : "=== Fetch next page ===",
+      \ "source" : "pull_request",
+      \ "action__source_name" : "pull_request",
+      \ "action__source_args" : [a:repo, a:page + 1],
+      \ }
+
+    call add(candidates, next_page)
+  endif
 
   return candidates
 endfunction
@@ -133,23 +183,17 @@ function! pull_request#fetch_request(repo, number)
     return {}
   endif
 
-  let content = webapi#json#decode(res.content)
-  return {
-        \ "base_sha" : content.base.sha,
-        \ "base_ref" : content.base.ref,
-        \ "head_sha" : content.head.sha,
-        \ "head_ref" : content.head.ref,
-        \}
+  return s:build_pr_info(webapi#json#decode(res.content))
 endfunction
 
-function! pull_request#fetch_files(repo, number, ...)
+function! pull_request#fetch_files(repo, number, page, ...)
   if a:0 > 0
     let pr_info = a:000[0]
   else
     let pr_info = pull_request#fetch_request(a:repo, a:number)
   endif
 
-  let files_res = webapi#http#get(s:pull_request_files_url(a:repo, a:number), {}, s:github_request_header)
+  let files_res = webapi#http#get(s:pull_request_files_url(a:repo, a:number, a:page), {}, s:github_request_header)
 
   if files_res.status !~ "^2.*"
     echo 'Failed to fetch pull request files'
@@ -161,12 +205,8 @@ function! pull_request#fetch_files(repo, number, ...)
   let candidates = []
 
   for f in files
-    let matches = matchlist(f.filename, '\.\(\w*\)$')
-    if len(matches) > 1
-      let extname = matches[1]
-      if index(g:unite_pull_request_exclude_extensions, extname) != -1
-        continue
-      endif
+    if s:is_exclude_file(f.filename)
+      continue
     endif
 
     let item = {
@@ -196,6 +236,24 @@ function! pull_request#fetch_files(repo, number, ...)
 
     call add(candidates, item)
   endfor
+
+  if s:has_next_page(files_res.header)
+    let next_page = {
+      \ "word" : "=== Fetch next page ===",
+      \ "source" : "pull_request_file",
+      \ "kind" : "source",
+      \ "action__source_name" : "pull_request_file",
+      \ "action__source_args" : [a:repo, a:number, a:page + 1, pr_info],
+      \ "source__pull_request_info" : {
+      \   "html_url" : pr_info.html_url,
+      \   "state" : pr_info.state,
+      \   "repo" : a:repo,
+      \   "number" : a:number,
+      \  }
+      \ }
+
+    call add(candidates, next_page)
+  endif
 
   return candidates
 endfunction

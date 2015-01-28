@@ -52,12 +52,17 @@ function! s:unite_source.gather_candidates(args, context)
 
   let repo = a:args[0]
   let number = a:args[1]
+  let page = 1
 
   if len(a:args) > 2
-    let pr_info = a:args[2]
-    return pull_request#fetch_files(repo, number, pr_info)
+    let page = a:args[2]
+  endif
+
+  if len(a:args) > 3
+    let pr_info = a:args[3]
+    return pull_request#fetch_files(repo, number, page, pr_info)
   else
-    return pull_request#fetch_files(repo, number)
+    return pull_request#fetch_files(repo, number, page)
   endif
 endfunction
 

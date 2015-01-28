@@ -40,7 +40,13 @@ function! s:unite_source.gather_candidates(args, context)
   endif
 
   let repo = a:args[0]
-  return pull_request#fetch_list(repo)
+
+  let page = 1
+  if len(a:args) == 2
+    let page = a:args[1]
+  endif
+
+  return pull_request#fetch_list(repo, page)
 endfunction
 
 function! unite#sources#pull_request#define()
