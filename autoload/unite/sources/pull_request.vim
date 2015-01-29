@@ -56,7 +56,10 @@ endfunction
 let s:action_table = {}
 let s:unite_source.action_table.source = s:action_table
 
-let s:action_table.browse = {'description' : 'browser open pull request page'}
+let s:action_table.browse = {
+      \ 'description' : 'browser open pull request page',
+      \ 'is_quit' : 0,
+      \ }
 function! s:action_table.browse.func(candidate)
   let url = a:candidate.source__pull_request_info.html_url
 
