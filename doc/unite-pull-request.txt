@@ -82,6 +82,13 @@ g:unite_pull_request_status_mark_table
 	      \ "removed" : "-",
 	      \ }
 <
+					*g:unite_pull_request_fetch_per_page_size*
+g:unite_pull_request_fetch_per_page_size
+		Specify per page count for fetch items .
+		Default value is 30.
+>
+	let g:unite_pull_request_status_mark_table = 100
+<
 ==============================================================================
 
 vim:tw=78:fo=tcq2mM:ts=8:ft=help:norl
