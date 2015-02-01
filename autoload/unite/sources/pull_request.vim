@@ -32,6 +32,7 @@ let s:unite_source.description = "candidates from GitHub pull requests"
 let s:unite_source.default_kind = 'source'
 let s:unite_source.default_action = 'start'
 let s:unite_source.action_table = {}
+let s:unite_source.parents = ["openable"]
 
 function! s:unite_source.gather_candidates(args, context)
   if len(a:args) < 1
@@ -64,6 +65,24 @@ function! s:action_table.browse.func(candidate)
   let url = a:candidate.source__pull_request_info.html_url
 
   call openbrowser#open(url)
+endfunction
+
+let s:action_table.open = {
+      \ 'description' : 'open pull request by vim-metarw-github-issue',
+      \ 'is_selectable' : 1,
+      \ 'is_quit' : 0,
+      \ }
+function! s:action_table.open.func(candidates)
+  if &filetype == "unite"
+    wincmd w
+  endif
+  for candidate in a:candidates
+    if buflisted(candidate.action__path)
+      execute 'buffer' bufnr(candidate.action__path)
+    else
+      execute 'edit ' . candidate.action__path
+    endif
+  endfor
 endfunction
 
 let &cpo = s:save_cpo

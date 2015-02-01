@@ -151,6 +151,7 @@ function! pull_request#fetch_list(repo, page)
           \ "source" : "pull_request",
           \ "action__source_name" : "pull_request_file",
           \ "action__source_args" : [a:repo, pr.number, 1, pr_info],
+          \ "action__path" : "issues:repos/" . a:repo . "/issues/" . pr.number,
           \ "source__pull_request_info" : {
           \   "html_url" : pr.html_url,
           \   "state" : pr.state,
