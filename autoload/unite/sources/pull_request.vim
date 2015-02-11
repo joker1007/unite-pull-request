@@ -36,11 +36,16 @@ let s:unite_source.parents = ["openable"]
 
 function! s:unite_source.gather_candidates(args, context)
   if len(a:args) < 1
-    echoerr "this source requires at least one arg (repository name)"
-    return []
+    silent let remote = system("git remote -v | grep origin | cut -f 2 | tail -n 1")
+    let path = matchlist(remote, "\\vgithub\.com[:/](.*)\\.git")
+    if empty(path)
+      echoerr "this source requires at least one arg (repository name)"
+      return []
+    endif
+    let repo = path[1]
+  else
+    let repo = a:args[0]
   endif
-
-  let repo = a:args[0]
 
   let page = 1
   if len(a:args) == 2

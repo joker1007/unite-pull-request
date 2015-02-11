@@ -29,6 +29,13 @@ execute `:Unite` with `pull_request` source and argument.
 :Unite pull_request:owner/repository_name
 ```
 
+If current directory is git repository and set github url as remote "origin",
+you don't need argument.
+
+```vim
+:Unite pull_request
+```
+
 To fetch pull request changed file list,
 execute `:Unite` with `pull_request_file` source and argument.
 
