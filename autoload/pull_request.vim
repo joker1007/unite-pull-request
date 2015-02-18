@@ -61,20 +61,24 @@ if !exists('g:unite_pull_request_fetch_per_page_size')
   let g:unite_pull_request_fetch_per_page_size = 30
 endif
 
-let s:github_request_header = {
+function! s:github_request_header()
+  let auth = s:GetGitHubAuthHeader()
+  return {
         \ "User-Agent" : "unite-pull-request",
         \ "Content-type" : "application/json",
-        \ "Authorization" : "Basic " .
-        \   webapi#base64#b64encode(g:github_token . ":x-oauth-basic")
+        \ "Authorization" : auth,
         \ }
+endfunction
 
-let s:github_raw_access_header = {
+function! s:github_raw_access_header()
+  let auth = s:GetGitHubAuthHeader()
+  return {
         \ "User-Agent" : "unite-pull-request",
         \ "Content-type" : "application/vnd.github.v3.raw",
         \ "Accept" : "application/vnd.github.v3.raw",
-        \ "Authorization" : "Basic " .
-        \   webapi#base64#b64encode(g:github_token . ":x-oauth-basic")
+        \ "Authorization" : auth,
         \ }
+endfunction
 
 function! s:pull_request_list_url(path, page)
   return g:unite_pull_request_endpoint_url . "repos/" . a:path .
@@ -135,7 +139,7 @@ function! s:build_pr_info(data)
 endfunction
 
 function! pull_request#fetch_list(repo, page)
-  let res = webapi#http#get(s:pull_request_list_url(a:repo, a:page), {}, s:github_request_header)
+  let res = webapi#http#get(s:pull_request_list_url(a:repo, a:page), {}, s:github_request_header())
 
   if res.status !~ "^2.*"
     return ['error', 'Failed to fetch pull request list']
@@ -177,7 +181,7 @@ function! pull_request#fetch_list(repo, page)
 endfunction
 
 function! pull_request#fetch_request(repo, number)
-  let res = webapi#http#get(s:pull_request_url(a:repo, a:number), {}, s:github_request_header)
+  let res = webapi#http#get(s:pull_request_url(a:repo, a:number), {}, s:github_request_header())
 
   if res.status !~ "^2.*"
     echo 'Failed to fetch pull request'
@@ -194,7 +198,7 @@ function! pull_request#fetch_files(repo, number, page, ...)
     let pr_info = pull_request#fetch_request(a:repo, a:number)
   endif
 
-  let files_res = webapi#http#get(s:pull_request_files_url(a:repo, a:number, a:page), {}, s:github_request_header)
+  let files_res = webapi#http#get(s:pull_request_files_url(a:repo, a:number, a:page), {}, s:github_request_header())
 
   if files_res.status !~ "^2.*"
     echo 'Failed to fetch pull request files'
@@ -261,7 +265,7 @@ endfunction
 
 function! s:fetch_base_file() dict
   let raw_file_url = s:raw_file_url(self.repo, self.base_sha, self.filename)
-  let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header)
+  let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header())
   if raw_res.status !~ "^2.*"
     echo 'Failed to fetch pull request files'
     return "error"
@@ -272,7 +276,7 @@ endfunction
 
 function! s:fetch_head_file() dict
   let raw_file_url = s:raw_file_url(self.repo, self.head_sha, self.filename)
-  let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header)
+  let raw_res = webapi#http#get(raw_file_url, {}, s:github_raw_access_header())
   if raw_res.status !~ "^2.*"
     echo 'Failed to fetch pull request files'
     return "error"
@@ -284,7 +288,7 @@ endfunction
 function! pull_request#post_review_comment(repo, number, comment_info)
   let json = webapi#json#encode(a:comment_info)
   let res = webapi#http#post(s:pull_request_comments_url(a:repo, a:number),
-        \ json, s:github_request_header)
+        \ json, s:github_request_header())
 
   if res.status =~ "^2.*"
     echo "Commented."
@@ -343,6 +347,74 @@ function! s:post_comment()
     setlocal nomodified
     bd!
   endif
+endfunction
+
+
+let s:unite_pull_request_token_file = expand(get(g:, 'unite_request_token_file', '~/.unite-pull-request'))
+
+" from gist-vim GistGetAuthHeader (https://github.com/mattn/gist-vim) BSD
+" Original Author: Yasuhiro Matsumoto
+function! s:GetGitHubAuthHeader() abort
+  let auth = ''
+  if filereadable(s:unite_pull_request_token_file)
+    let str = join(readfile(s:unite_pull_request_token_file), '')
+    if type(str) == 1
+      let auth = str
+    endif
+  endif
+  if len(auth) > 0
+    return auth
+  endif
+
+  redraw
+  echohl WarningMsg
+  echo 'unite-pull-request.vim requires authorization to use the GitHub API. These settings are stored in "~/.unite-pull-request". If you want to revoke, do "rm ~/.unite-pull-request".'
+  echohl None
+  let password = inputsecret('GitHub Password for '.g:github_user.':')
+  if len(password) == 0
+    let v:errmsg = 'Canceled'
+    return ''
+  endif
+  let note = 'unite-pull-request.vim on '.hostname().' '.strftime('%Y/%m/%d-%H:%M:%S')
+  let note_url = 'https://github.com/joker1007/unite-pull-request'
+  let insecureSecret = printf('basic %s', webapi#base64#b64encode(g:github_user.':'.password))
+  let res = webapi#http#post(g:unite_pull_request_endpoint_url.'authorizations', webapi#json#encode({
+              \  "scopes"   : ["repo"],
+              \  "note"     : note,
+              \  "note_url" : note_url,
+              \}), {
+              \  "Content-Type"  : "application/json",
+              \  "Authorization" : insecureSecret,
+              \})
+  let h = filter(res.header, 'stridx(v:val, "X-GitHub-OTP:") == 0')
+  if len(h)
+    let otp = inputsecret('OTP:')
+    if len(otp) == 0
+      let v:errmsg = 'Canceled'
+      return ''
+    endif
+    let res = webapi#http#post(g:unite_pull_request_endpoint_url.'authorizations', webapi#json#encode({
+                \  "scopes"   : ["repo"],
+                \  "note"     : note,
+                \  "note_url" : note_url,
+                \}), {
+                \  "Content-Type"  : "application/json",
+                \  "Authorization" : insecureSecret,
+                \  "X-GitHub-OTP"  : otp,
+                \})
+  endif
+  let authorization = webapi#json#decode(res.content)
+  if has_key(authorization, 'token')
+    let secret = printf('token %s', authorization.token)
+    call writefile([secret], s:unite_pull_request_token_file)
+    if !(has('win32') || has('win64'))
+      call system('chmod go= '.s:unite_pull_request_token_file)
+    endif
+  elseif has_key(authorization, 'message')
+    let secret = ''
+    let v:errmsg = authorization.message
+  endif
+  return secret
 endfunction
 
 let &cpo = s:save_cpo
