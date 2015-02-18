@@ -16,10 +16,10 @@ NeoBundle 'joker1007/unite-pull-request'
 
 ## Usage
 
-Add `g:github_token` to your vimrc
+Add `g:github_user` to your vimrc
 
 ```vim
-let g:github_token="xxxxxxxxxxxxx"
+let g:github_user="<your github user id>"
 ```
 
 To fetch pull request list of a repository,

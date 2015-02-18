@@ -35,9 +35,9 @@ Requirement:
 ==============================================================================
 USAGE							*unite-pull-request-usage*
 
-Add |g:github_token| to your vimrc
+Add |g:github_user| to your vimrc
 >
-	let g:github_token="xxxxxxxxxxxxx"
+	let g:github_user="<your github user id>"
 <
 To fetch pull request list of a repository,
 execute |:Unite| with pull_request source and argument.
