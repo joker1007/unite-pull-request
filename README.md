@@ -6,13 +6,6 @@ unite-pull-request is a [unite.vim](https://github.com/Shougo/unite.vim "unite.v
 - curl
 - webapi-vim (https://github.com/mattn/webapi-vim)
 
-## Install
-
-Bundle it!
-
-```vim
-NeoBundle 'joker1007/unite-pull-request'
-```
 
 ## Usage
 
