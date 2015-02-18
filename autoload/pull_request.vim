@@ -37,6 +37,13 @@ if !executable('curl')
   finish
 endif
 
+if !exists('g:github_user')
+  let g:github_user = substitute(s:system('git config --get github.user'), "\n", '', '')
+  if strlen(g:github_user) == 0
+    let g:github_user = $GITHUB_USER
+  end
+endif
+
 if !exists('g:unite_pull_request_exclude_extensions')
   let g:unite_pull_request_exclude_extensions = [
         \ "png", "jpg", "jpeg", "gif", "pdf", "bmp",
